@@ -1,0 +1,77 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- ====================================================
+-- 1. ระบบปรับความเร็วตัวละคร (Movement Speed)
+-- ====================================================
+local function setCharacterSpeed(speedValue)
+	local character = LocalPlayer.Character
+	if character and character:FindFirstChild("Humanoid") then
+		character.Humanoid.WalkSpeed = speedValue
+	end
+end
+
+-- ตั้งค่าความเร็วเดินเป็น 32 (ปกติคือ 16)
+setCharacterSpeed(32)
+
+-- ====================================================
+-- 2. ระบบไฮไลท์ศัตรู/ผู้เล่นอื่น (Highlight / Outline)
+-- ====================================================
+local function applyHighlight(player)
+	player.CharacterAdded:Connect(function(character)
+		local highlight = Instance.new("Highlight")
+		highlight.Name = "PlayerHighlight"
+		highlight.FillColor = Color3.fromRGB(255, 0, 0) -- สีด้านใน (สีแดง)
+		highlight.OutlineColor = Color3.fromRGB(255, 255, 255) -- สีเส้นขอบ (สีขาว)
+		highlight.FillTransparency = 0.5
+		highlight.Parent = character
+	end)
+end
+
+-- ใส่ Highlight ให้ผู้เล่นทุกคนในแมตช์
+for _, player in ipairs(Players:GetPlayers()) do
+	if player ~= LocalPlayer then
+		if player.Character then
+			local highlight = Instance.new("Highlight")
+			highlight.FillColor = Color3.fromRGB(255, 0, 0)
+			highlight.Parent = player.Character
+		end
+		applyHighlight(player)
+	end
+end
+
+-- ====================================================
+-- 3. ระบบค้นหาและหันกล้องหาเป้าหมายที่ใกล้ที่สุด (Auto Target)
+-- ====================================================
+local function getClosestEnemy()
+	local closestPlayer = nil
+	local shortestDistance = math.huge
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			local targetPos = player.Character.HumanoidRootPart.Position
+			local distance = (targetPos - Camera.CFrame.Position).Magnitude
+
+			if distance < shortestDistance then
+				shortestDistance = distance
+				closestPlayer = player
+			end
+		end
+	end
+	return closestPlayer
+end
+
+-- หันกล้องไปหาเป้าหมายเมื่อกดปุ่ม E
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.E then
+		local target = getClosestEnemy()
+		if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+			Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Character.HumanoidRootPart.Position)
+		end
+	end
+end)
